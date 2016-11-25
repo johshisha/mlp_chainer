@@ -22,8 +22,9 @@ archs = {
 n_epoch = 10
 batchsize = 32
 
-def train(model, optimizer, x_train, y_train, shuffle=True):
+def train(model, optimizer, x_train, y_train, x_test, y_test, shuffle=True):
     n_train = len(x_train)
+    n_test = len(x_test)
     losser = Losser(model)
     epoch_loss = []
 
@@ -51,6 +52,25 @@ def train(model, optimizer, x_train, y_train, shuffle=True):
         sum_acc /= (i+batchsize)
         print('epoch %d done, epoch loss is %f, acc is %f'%(epoch, sum_loss, sum_acc))
         epoch_loss.append(sum_loss)
+
+
+        if epoch%2 == 0:
+            test_loss = np.float32(0)
+            test_acc = np.float32(0)
+            for i in range(0, n_test, batchsize):
+                x_batch = Variable(x_test[i:i+batchsize])
+                y_batch = Variable(y_test[i:i+batchsize])
+
+
+                loss, acc = losser(x_batch, y_batch)
+
+                test_loss += float(cuda.to_cpu(loss.data)) * batchsize
+                test_acc += float(cuda.to_cpu(acc.data)) * batchsize
+
+            test_loss /= (i+batchsize)
+            test_acc /= (i+batchsize)
+            print('test:: epoch loss is %f, acc is %f'%(test_loss, test_acc))
+
 
     return model
 
@@ -87,22 +107,25 @@ if __name__ == '__main__':
     n_epoch = args.epoch
     batchsize = args.batchsize
 
-    x_train, x_test, y_train, y_test = util.load_mnist(noised=False) #load mnist data
-
-
     #difine model and optimizer
     model = archs[args.arch]()
     if args.gpu >= 0:
+        xp = cuda.cupy
+        cuda.get_device(args.gpu)
         model.to_gpu()
     else:
+        xp = np
         model.to_cpu()
+
+    x_train, x_test, y_train, y_test = list(map(xp.array, util.load_mnist(noised=False))) #load mnist data
+
 
     if args.no_dropout:
         model.train = False  #without dropout
     optimizer = optimizers.Adam(alpha=0.01, beta1=args.beta1)
     optimizer.setup(model)
 
-    model = train(model, optimizer, x_train, y_train)
+    model = train(model, optimizer, x_train, y_train, x_test, y_test)
 
     serializers.save_npz(save_model, model)
 
