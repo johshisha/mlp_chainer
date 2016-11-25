@@ -113,9 +113,11 @@ if __name__ == '__main__':
         xp = cuda.cupy
         cuda.get_device(args.gpu)
         model.to_gpu()
+        shuffle = False
     else:
         xp = np
         model.to_cpu()
+        fhuffle = True
 
     x_train, x_test, y_train, y_test = list(map(xp.array, util.load_mnist(noised=False))) #load mnist data
 
@@ -125,7 +127,7 @@ if __name__ == '__main__':
     optimizer = optimizers.Adam(alpha=0.01, beta1=args.beta1)
     optimizer.setup(model)
 
-    model = train(model, optimizer, x_train, y_train, x_test, y_test)
+    model = train(model, optimizer, x_train, y_train, x_test, y_test, shuffle=shuffle)
 
     serializers.save_npz(save_model, model)
 
