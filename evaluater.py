@@ -5,26 +5,37 @@ from chainer import computational_graph, serializers, cuda, optimizers, Variable
 from chainer import functions as F, links as L
 import numpy as np
 import random, argparse
+from IPython import embed
 
 
-from util import util
-from model import MLP, deep_auto_encoder, cnn_auto_encoder
+from util import util, drawer
+from model import MLP
 
 
 archs = {
-    'normal': MLP.AutoEncoder,
-    'deep': deep_auto_encoder.DeepAutoEncoder,
-    'cnn': cnn_auto_encoder.CnnAutoEncoder
+    'normal': MLP.MLP
 }
 
 
+def calc_acc(y, t):
+    from sklearn.metrics import classification_report
+    print(classification_report(y, t))
 
-def show_reconstruction(model, x_test, y_test, batchsize):
+
+
+def show_acc(model, x_test, y_test, batchsize):
+    corrects = []
+    estimates = []
     #show test sample estimation
-    indexs = random.sample(range(len(y_test)), batchsize)#抽出する添字を取得
-    x, t = Variable(x_test[indexs]), Variable(y_test[indexs])
-    y = model(x if batchsize != 1 else F.reshape(x, (batchsize, x.data.shape[0])))
-    util.draw_digits(y, t)
+    for data, label in zip(x_test, y_test):
+        x, t = Variable(data.reshape(1,data.shape[0])), Variable(np.array([label]))
+        y = model(x if batchsize != 1 else F.reshape(x, (batchsize, x.data.shape[0])))
+
+        #embed()
+        corrects.extend(cuda.to_cpu(t.data))
+        estimates.extend(np.array([cuda.to_cpu(y.data).argmax()]))
+
+    calc_acc(estimates, corrects)
 
 
 if __name__ == '__main__':
@@ -58,6 +69,6 @@ if __name__ == '__main__':
     serializers.load_npz(saved_model, model)
     model.train = False
 
-    show_reconstruction(model, x_test, y_test, batchsize)
+    show_acc(model, x_test, y_test, batchsize)
 
 

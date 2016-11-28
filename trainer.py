@@ -118,6 +118,7 @@ if __name__ == '__main__':
         model.to_cpu()
 
     x_train, x_test, y_train, y_test = list(map(xp.array, util.load_mnist(noised=False))) #load mnist data
+    # x_train[0] = numpy.ndarray(shape:(784,)), y_train[0] = numpy.int32
 
 
     if args.no_dropout:
